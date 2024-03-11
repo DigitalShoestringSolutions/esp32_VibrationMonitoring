@@ -231,6 +231,9 @@ bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
       FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);	/* Weigh data */
       FFT.compute(FFTDirection::Forward); /* Compute FFT */
       FFT.complexToMagnitude(); /* Compute magnitudes */
+      float x;
+      if (JSONdoc["acceleration"] > 0.2){x = FFT.majorPeak();} else {x = 0.00;}
+      JSONdoc["peakFrequency"] = x;
       // Serial.println("Computed magnitudes:");
       // PrintVector(vReal, (samples >> 1), SCL_FREQUENCY);
       downSample(vReal, samples, JSONdoc);
