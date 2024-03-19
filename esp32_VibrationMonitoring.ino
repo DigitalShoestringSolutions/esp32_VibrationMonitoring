@@ -25,6 +25,7 @@
 #include "arduinoFFT.h"
 #include <Adafruit_ST7789.h>  // Hardware-specific library for ST7789
 #include <ArduinoJson.h>
+#include "Adafruit_MCP9808.h"
 
 
 // FFT settings
@@ -55,9 +56,10 @@ ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequen
 
 ShoestringLib shlib;
 
-// IMU settings
+// Sensor settings
 
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
 
 // Screen Settings
 Adafruit_ST7789 oled_display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
@@ -150,6 +152,13 @@ void setup() {
   }
   accel.setRange(ADXL345_RANGE_16_G);
 
+  if (!tempsensor.begin(0x18)) {
+    Serial.println("Couldn't find MCP9808! Check your connections and verify the address is correct.");
+    while (1);
+  }
+  Serial.println("Found MCP9808!");
+  tempsensor.setResolution(3); // sets the resolution mode of reading, the modes are defined in the table bellow:
+
   // Initialise Screen
   delay(1000);
   pinMode(TFT_BACKLITE, OUTPUT);
@@ -240,6 +249,9 @@ bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
       int fft_time = millis()-start;
       Serial.print("FFT took: ");
       Serial.println(fft_time);
+
+      JSONdoc["temperature"] = tempsensor.readTempC();
+
      
       
     
