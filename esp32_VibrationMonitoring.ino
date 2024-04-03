@@ -20,7 +20,6 @@
 #include "shoestring_lib.h"
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL345_U.h>
 #include "arduinoFFT.h"
 #include <Adafruit_ST7789.h>  // Hardware-specific library for ST7789
@@ -108,7 +107,7 @@ void Task1code(void * pvParameters){
   for(;;){
     if(!bufferFull){
       accel.getEvent(&event);
-      acceleration_buffer[sampleCounter] = event.acceleration.z;
+      acceleration_buffer[sampleCounter] = event.acceleration.z + event.acceleration.x + event.acceleration.y;
       vImag[sampleCounter] = 0;
       sampleCounter++;     
 
@@ -290,9 +289,10 @@ void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSO
   uint16_t n_bands = (samplingFrequency*0.5)/freq_bands;
   uint16_t samples_per_band = 0.5*(bufferSize/n_bands);
   double downsampledData[n_bands];
+
   
 
-  for (uint16_t i = 0; i < n_bands; i++) {
+  for (uint16_t i = 0; i < n_bands+1; i++) {
     int frequency = i * freq_bands;
     double mag_max = 0.0;
     for (uint16_t j = i * samples_per_band; j < (i + 1) * samples_per_band; j++) {\
@@ -300,7 +300,6 @@ void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSO
           mag_max = vData[j];
       }    
     }
-
     int ascii_int;
     char tag_string[15];
     char freq_string[10];
@@ -314,6 +313,7 @@ void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSO
     JSONdoc["fft"][i]["frequency"] = tag_string;
     JSONdoc["fft"][i]["magnitude"] = mag_max;
     
+    // Serial.println(tag_string);
     // Serial.print(frequency);
     // Serial.print("Hz ");
     // Serial.println(mag_max);
