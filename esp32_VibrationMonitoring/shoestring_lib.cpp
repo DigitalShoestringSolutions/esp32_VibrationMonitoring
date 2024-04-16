@@ -35,7 +35,7 @@ void ShoestringLib::setup() {
   //set up config manager
   cm.register_item(ConfigItem("mqtt_url", "127.0.0.1"));
   cm.register_item(ConfigItem("mqtt_port", 1883));
-  cm.register_item(ConfigItem("mqtt_topic", "equipment_monitoring/count_trigger"));
+  cm.register_item(ConfigItem("mqtt_topic", "vibration_monitoring"));
   cm.register_item(ConfigItem("identifier", "machine_1"));
 
   // set up wifi using wifi manager
