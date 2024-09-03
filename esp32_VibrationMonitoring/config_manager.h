@@ -38,6 +38,9 @@ static Preferences preferences;
 
 #undef RESET_WIFI
 
+/*
+* NOTICE: the name must be <=15 characters for the preferences library to work correctly
+*/
 class ConfigItem {
 public:
   ConfigItem(String name, String default_value = "") {
@@ -64,17 +67,20 @@ public:
   bool isString() {
     return is_string;
   }
-  void setString(String value) {
+  size_t setString(String value) {
     this->string_value = value;
     preferences.begin("app_config", RW_MODE);
-    preferences.putString(this->name.c_str(), value);
+    size_t written = preferences.putString(this->name.c_str(), value);
     preferences.end();
+    return written;
   }
-  void setInt(int value) {
+
+  size_t setInt(int value) {
     this->int_value = value;
     preferences.begin("app_config", RW_MODE);
-    preferences.putInt(this->name.c_str(), value);
+    size_t written = preferences.putInt(this->name.c_str(), value);
     preferences.end();
+    return written;
   }
 private:
   bool is_string;
@@ -279,11 +285,11 @@ private:
       String new_value = server.arg(this->items.at(i).name);
 
       if (this->items.at(i).isString()) {
-        this->items.at(i).setString(new_value);
-        Serial.println(this->items.at(i).name + " <S< " + this->items.at(i).getString());
+        size_t written = this->items.at(i).setString(new_value);
+        Serial.println(this->items.at(i).name + " <S< " + this->items.at(i).getString()+" ["+written+"]");
       } else {
-        this->items.at(i).setInt(new_value.toInt());
-        Serial.println(this->items.at(i).name + " <I< " + this->items.at(i).getInt());
+        size_t written = this->items.at(i).setInt(new_value.toInt());
+        Serial.println(this->items.at(i).name + " <I< " + this->items.at(i).getInt()+" ["+written+"]");
       }
     }
     server.send(200, "text/html", "Saved");

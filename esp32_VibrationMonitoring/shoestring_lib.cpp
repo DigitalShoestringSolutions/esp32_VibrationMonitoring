@@ -11,6 +11,7 @@ unsigned long lastTriggerTime;
 WiFiClient espClient;
 PubSubClient client(espClient);
 ConfigDisplay display;
+bool include_timestamp = false;
 
 
 void ShoestringLib::setup() {
@@ -37,19 +38,21 @@ void ShoestringLib::setup() {
   cm.register_item(ConfigItem("mqtt_port", 1883));
   cm.register_item(ConfigItem("mqtt_topic", "vibration_monitoring"));
   cm.register_item(ConfigItem("identifier", "machine_1"));
+  cm.register_item(ConfigItem("incl_tstamp", "true"));
 
   // set up wifi using wifi manager
   WifiManager wm(&cm);
   wm.setup();
 
   // set up time
+  
   configTime(0, 0, ntpServer);
   printLocalTime();
   lastTriggerTime = 0;
 
   // setup client
   client.setBufferSize(4000);
-
+  include_timestamp = cm.getString("incl_tstamp").equalsIgnoreCase("true");
 }
 
 void ShoestringLib::reconnect() {
@@ -95,9 +98,13 @@ void ShoestringLib::loop() {
 
     if (result) {    
       int start_2 = millis();
-      get_timestamp();
 
-      JSONdoc["timestamp"] = String(timestamp_buffer);
+      if(include_timestamp){
+        get_timestamp();
+        JSONdoc["timestamp"] = String(timestamp_buffer);
+      } else {
+        JSONdoc["timestamp"] = "not_included";
+      }
       JSONdoc["id"] = cm.getString("identifier");
       
       // print to serial
