@@ -2,7 +2,6 @@
 
 
 // General Variables
-const char* ntpServer = "pool.ntp.org";
 unsigned long lastTriggerTime;
 
 #define I2C2_SDA_PIN 16
@@ -36,6 +35,7 @@ void ShoestringLib::setup() {
   cm.register_item(ConfigItem("mqtt_url", "127.0.0.1"));
   cm.register_item(ConfigItem("mqtt_port", 1883));
   cm.register_item(ConfigItem("mqtt_topic", "vibration_monitoring"));
+  cm.register_item(ConfigItem("ntp_server", "pool.ntp.org"));
   cm.register_item(ConfigItem("identifier", "machine_1"));
 
   // set up wifi using wifi manager
@@ -43,7 +43,7 @@ void ShoestringLib::setup() {
   wm.setup();
 
   // set up time
-  configTime(0, 0, ntpServer);
+  configTime(0, 0, cm.getString("ntp_server");
   printLocalTime();
   lastTriggerTime = 0;
 
