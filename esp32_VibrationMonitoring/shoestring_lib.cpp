@@ -57,7 +57,9 @@ void ShoestringLib::setup() {
 
 void ShoestringLib::reconnect() {
   long now = millis();
+  Serial.println("void ShoestringLib::reconnect() running");
   if (current_mqtt_server_addr != cm.getString("mqtt_url") || current_mqtt_server_port != cm.getInt("mqtt_port")) {
+    Serial.println("Resetting MQTT details...");
     current_mqtt_server_addr = cm.getString("mqtt_url");
     current_mqtt_server_port = cm.getInt("mqtt_port");
     display.setMQTTIP(current_mqtt_server_addr+":"+current_mqtt_server_port);
@@ -66,9 +68,15 @@ void ShoestringLib::reconnect() {
     mqttConnectTimestamp = now - 16000;  //force retry
   }
 
+  Serial.println("Testing reconnect time...");
   if (now - mqttConnectTimestamp > 15000) {
+    Serial.println("Investigating MQTT status...");
     display.setMQTTStatus("Connecting...");
+    Serial.println("Connecting... displayed, investigating further...");
     const String status_topic = "status/"+cm.getString("identifier")+"/alive";
+    Serial.print("Status topic: ");
+    Serial.println(status_topic);
+    Serial.println("Evaluating status topic...");
     if (client.connect(cm.getString("identifier").c_str(),status_topic.c_str(),1,true,"{\"connected\":false}")) {  //todo randomise
       Serial.println("ONLINE");
       display.setMQTTStatus("Connected");
@@ -91,6 +99,7 @@ void ShoestringLib::loop() {
     reconnect();
     delay(29);
   } else {
+    Serial.println("client.connected(), not reconnecting");
     client.loop();
 
     StaticJsonDocument<3000> JSONdoc;
