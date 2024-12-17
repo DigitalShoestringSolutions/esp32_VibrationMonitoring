@@ -89,6 +89,13 @@ void ShoestringLib::reconnect() {
       display.setMQTTStatus("Failed");
     }
     mqttConnectTimestamp = now;
+  } else {
+      Serial.println("Not yet time to reconnect:");
+      Serial.print("now millis is ");
+      Serial.println(now);
+      Serial.print("waiting until ");
+      Serial.print(mqttConnectTimestamp);
+      Serial.println(" to reconnect");
   }
 }
 
