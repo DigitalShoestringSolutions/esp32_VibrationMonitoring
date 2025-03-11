@@ -26,7 +26,6 @@
 #include <ArduinoJson.h>
 #include "Adafruit_MCP9808.h"
 
-
 // FFT settings
 const uint16_t samples = 1024; // Must be a power of 2
 const double samplingFrequency = 300; // Adjust to your needs
@@ -34,8 +33,6 @@ unsigned int sampling_period_us;
 float vReal[samples]; // Buffer for FFT input
 float acceleration_buffer[samples]; // Buffer to be filledt
 float vImag[samples]; // Imaginary part (not used but required by some FFT library functions)
-// double bufferSamples[samples]; 
-// long int bufferMillis[samples];
 bool bufferFull = false; // Indicates when the buffer is ready for FFT
 int buff_start;
 int sampleCounter = 0;
@@ -44,8 +41,6 @@ StaticJsonDocument<6000> JSONbuffer;
 float buffer_total;
 float buffer_mean; 
 
-// arduinoFFT FFT = arduinoFFT(); 
-
 ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequency, true);
 
 #define SCL_INDEX 0x00
@@ -53,15 +48,7 @@ ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequen
 #define SCL_FREQUENCY 0x02
 #define SCL_PLOT 0x03
 
-ShoestringLib shlib;
-
-// Sensor settings
-
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
-
 // Screen Settings
-Adafruit_ST7789 oled_display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 #define TEXT_SIZE 1
 #define TFT_CS  7
 #define TFT_DC 39
@@ -69,32 +56,90 @@ Adafruit_ST7789 oled_display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 #define TFT_BACKLITE  45
 #define TFT_I2C_POWER  21
 
+// Initialize hardware objects
+ShoestringLib shlib;
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
+Adafruit_ST7789 oled_display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+
+// Sensor status tracking
+struct SensorStatus {
+    bool accel_ok = false;
+    bool temp_ok = false;
+    unsigned long last_retry = 0;
+    const unsigned long RETRY_INTERVAL = 60000; // Retry every 60 seconds
+} sensor_status;
 
 // Task handles for the two tasks
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
 // Other Variables
-
 volatile bool interrupt_flag = false;
 volatile bool value = true;
 volatile bool prev_value = true;
-
 bool debounced_value = true;
 bool prev_debounced_value = true;
-
 unsigned long interrupt_time;
 unsigned long trigger_time;
 
-// long int timestamp;
-// long int millistamp;
+// Error display helper
+void displaySensorError(const char* message) {
+    oled_display.fillScreen(ST77XX_BLACK);
+    oled_display.setCursor(0, 30);
+    oled_display.setTextColor(ST77XX_RED);
+    oled_display.setTextSize(2);
+    oled_display.println(message);
+    delay(3000);
+}
 
+// Sensor initialization functions
+bool initializeAccelerometer() {
+    if (!accel.begin()) {
+        Serial.println("ADXL345 not detected. Check wiring!");
+        displaySensorError("ADXL345 Error\nCheck wiring!");
+        return false;
+    }
+    accel.setRange(ADXL345_RANGE_16_G);
+    return true;
+}
 
+bool initializeTemperatureSensor() {
+    if (!tempsensor.begin(0x18)) {
+        Serial.println("MCP9808 not detected. Check wiring!");
+        displaySensorError("MCP9808 Error\nCheck wiring!");
+        return false;
+    }
+    tempsensor.setResolution(3);
+    return true;
+}
 
-
-
-
-
+// Periodic sensor check
+void checkSensors() {
+    unsigned long now = millis();
+    if (now - sensor_status.last_retry >= sensor_status.RETRY_INTERVAL) {
+        sensor_status.last_retry = now;
+        
+        if (!sensor_status.accel_ok) {
+            sensor_status.accel_ok = initializeAccelerometer();
+        }
+        
+        if (!sensor_status.temp_ok) {
+            sensor_status.temp_ok = initializeTemperatureSensor();
+        }
+        
+        // Update display with current status
+        oled_display.fillScreen(ST77XX_BLACK);
+        oled_display.setCursor(0, 0);
+        oled_display.setTextColor(ST77XX_RED);
+        oled_display.setTextSize(2);
+        oled_display.print("Accel: ");
+        oled_display.println(sensor_status.accel_ok ? "OK" : "ERROR");
+        oled_display.print("Temp:  ");
+        oled_display.println(sensor_status.temp_ok ? "OK" : "ERROR");
+        delay(3000);
+    }
+}
 
 void Task1code(void * pvParameters){
   sensors_event_t event;
@@ -105,6 +150,12 @@ void Task1code(void * pvParameters){
 
   int period_start = micros();
   for(;;){
+    // Check if accelerometer is working
+    if(!sensor_status.accel_ok) {
+      delay(1000); // Wait a second before checking again
+      continue;
+    }
+
     if(!bufferFull){
       accel.getEvent(&event);
       acceleration_buffer[sampleCounter] = event.acceleration.z + event.acceleration.x + event.acceleration.y;
@@ -117,14 +168,10 @@ void Task1code(void * pvParameters){
         Serial.print("Buffer Filled in ");
         int buff_time = millis()-buff_start;
         Serial.println(buff_time);
-
       }
-      // Serial.print("Sampling Period (us): "); 
-      // Serial.println(period);
     }else{
       Serial.println("Buffer Full");
-      // delay(10);
-      }
+    }
     while (micros() - period_start < sampling_period_us ){
     }
     period_start += sampling_period_us;
@@ -137,28 +184,13 @@ void Task2code(void * pvParameters){
   }
 }
 
-
-
 void setup() {
   shlib.addConfig("debounce_time", 20);
   shlib.setup();
   Serial.begin(9600);
   Serial.print("Starting Up...");
-  // Initialise IMU
-  if(!accel.begin()) {
-    Serial.println("Ooops, no ADXL345 detected ... Check your wiring!");
-    while(1);
-  }
-  accel.setRange(ADXL345_RANGE_16_G);
 
-  if (!tempsensor.begin(0x18)) {
-    Serial.println("Couldn't find MCP9808! Check your connections and verify the address is correct.");
-    while (1);
-  }
-  Serial.println("Found MCP9808!");
-  tempsensor.setResolution(3); // sets the resolution mode of reading, the modes are defined in the table bellow:
-
-  // Initialise Screen
+  // Initialize display first for error messages
   delay(1000);
   pinMode(TFT_BACKLITE, OUTPUT);
   digitalWrite(TFT_BACKLITE, HIGH);
@@ -176,14 +208,40 @@ void setup() {
   oled_display.print("Starting...");
   delay(1000);
 
-  xTaskCreatePinnedToCore(
-    Task1code, /* Task function. */
-    "Task1",   /* name of task. */
-    10000,     /* Stack size of task */
-    NULL,      /* parameter of the task */
-    1,         /* priority of the task */
-    &Task1,    /* Task handle to keep track of created task */
-    0);        /* pin task to core 0 */ 
+  // Initialize sensors with error handling
+  // Keep trying to initialize sensors until both are working
+  while (!sensor_status.accel_ok || !sensor_status.temp_ok) {
+    if (!sensor_status.accel_ok) {
+      oled_display.fillScreen(ST77XX_BLACK);
+      oled_display.setCursor(0, 30);
+      oled_display.print("Retrying accel...");
+      delay(1000);
+      sensor_status.accel_ok = initializeAccelerometer();
+    }
+    if (!sensor_status.temp_ok) {
+      oled_display.fillScreen(ST77XX_BLACK); 
+      oled_display.setCursor(0, 30);
+      oled_display.print("Retrying temp...");
+      delay(1000);
+      sensor_status.temp_ok = initializeTemperatureSensor();
+    }
+    delay(2000);
+  }
+  // sensor_status.accel_ok = initializeAccelerometer();
+  // delay(1000);
+  // sensor_status.temp_ok = initializeTemperatureSensor();
+  // delay(1000);
+  // Create tasks only if accelerometer is working
+  if (sensor_status.accel_ok) {
+    xTaskCreatePinnedToCore(
+      Task1code, /* Task function. */
+      "Task1",   /* name of task. */
+      10000,     /* Stack size of task */
+      NULL,      /* parameter of the task */
+      1,         /* priority of the task */
+      &Task1,    /* Task handle to keep track of created task */
+      0);        /* pin task to core 0 */ 
+  }
 
   xTaskCreatePinnedToCore(
     Task2code, /* Task function. */
@@ -194,72 +252,66 @@ void setup() {
     &Task2,    /* Task handle to keep track of created task */
     1);        /* pin task to core 1 */
 
-
   shlib.set_loop_hook(loop_callback);
   delay(5);
-  // timestamp = get_timestamp();
-  // millistamp = millis();
 }
-
-
 
 void loop() {
 }
 
 bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
+  // Run periodic sensor check
+  checkSensors();
 
-  if(bufferFull){
+  if(bufferFull && sensor_status.accel_ok){
     /// Do analysis here
-      // float tempVReal[samples];
-      // // Safely copy data from the shared buffer to the temporary buffer
-      for(int i = 0; i < samples; i++) {
-        vReal[i] = acceleration_buffer[i];
-      }
+    for(int i = 0; i < samples; i++) {
+      vReal[i] = acceleration_buffer[i];
+    }
 
-      bufferFull = false;
-      buff_start = millis();
-      Serial.println("Buffer Emptied"); // Can copy the buffer and move this up
+    bufferFull = false;
+    buff_start = millis();
+    Serial.println("Buffer Emptied");
 
-      int start = millis();
-      removeOffset(vReal);
-      int static_offset_time = millis()-start;
-      Serial.print("removing offset took: ");
-      Serial.println(static_offset_time);
+    int start = millis();
+    removeOffset(vReal);
+    int static_offset_time = millis()-start;
+    Serial.print("removing offset took: ");
+    Serial.println(static_offset_time);
 
+    start = millis();
+    JSONdoc["acceleration"] = calculateRMS(vReal);
+    int RMS_time = millis()-start;
+    Serial.print("RMS took: ");
+    Serial.println(RMS_time);
 
+    start = millis();
+    FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
+    FFT.compute(FFTDirection::Forward);
+    FFT.complexToMagnitude();
+    float x;
+    if (JSONdoc["acceleration"] > 0.2){x = FFT.majorPeak();} else {x = 0.00;}
+    JSONdoc["peakFrequency"] = x;
+    downSample(vReal, samples, JSONdoc);
+    int fft_time = millis()-start;
+    Serial.print("FFT took: ");
+    Serial.println(fft_time);
 
-      start = millis();
-      JSONdoc["acceleration"] = calculateRMS(vReal);
-      int RMS_time = millis()-start;
-      Serial.print("RMS took: ");
-      Serial.println(RMS_time);
-
-      start = millis();
-      // ArduinoFFT V2.0.0
-      FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);	/* Weigh data */
-      FFT.compute(FFTDirection::Forward); /* Compute FFT */
-      FFT.complexToMagnitude(); /* Compute magnitudes */
-      float x;
-      if (JSONdoc["acceleration"] > 0.2){x = FFT.majorPeak();} else {x = 0.00;}
-      JSONdoc["peakFrequency"] = x;
-      // Serial.println("Computed magnitudes:");
-      // PrintVector(vReal, (samples >> 1), SCL_FREQUENCY);
-      downSample(vReal, samples, JSONdoc);
-      int fft_time = millis()-start;
-      Serial.print("FFT took: ");
-      Serial.println(fft_time);
-
+    // Add temperature if sensor is working
+    if(sensor_status.temp_ok) {
       JSONdoc["temperature"] = tempsensor.readTempC();
+    } else {
+      JSONdoc["temperature"] = -999.99; // Error value
+    }
 
-     
-      
+    // Add sensor status to JSON
+    JSONdoc["sensors"]["accelerometer"] = sensor_status.accel_ok;
+    JSONdoc["sensors"]["temperature"] = sensor_status.temp_ok;
     
     return true;
   }
   return false;
 }
-
-
 
 float calculateRMS(float *vData) {
   float squareSum = 0.0;
@@ -282,7 +334,6 @@ void removeOffset(float *vData){
   }
 
 }
-
 
 void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSONdoc){
   uint16_t freq_bands = 10; // Hz range per band
@@ -320,8 +371,6 @@ void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSO
   }
 }
 
-
-
 void PrintVector(float *vData, uint16_t bufferSize, uint8_t scaleType)
 {
   for (uint16_t i = 0; i < bufferSize; i++)
@@ -348,15 +397,6 @@ void PrintVector(float *vData, uint16_t bufferSize, uint8_t scaleType)
   }
   Serial.println();
 }
-
-
-// unsigned long long int get_timestamp() {
-//     struct timeval tv;
-//     gettimeofday(&tv, NULL);
-//     unsigned long long int milliseconds = (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000);
-//     return milliseconds;
-// }
-
 
 char get_timestamp() {
     struct timeval tv;
