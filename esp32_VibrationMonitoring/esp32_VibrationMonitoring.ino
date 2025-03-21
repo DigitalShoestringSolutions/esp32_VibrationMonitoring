@@ -146,14 +146,7 @@ void showBufferStatus() {
     static unsigned long lastUpdate = 0;
     
     if (millis() - lastUpdate > 500) {  // Update every 500ms
-        Serial.print("\rBuffer Full");
-        for(uint8_t i = 0; i < dots; i++) {
-            Serial.print(".");
-        }
-        Serial.print("    ");  // Clear any previous dots
-        
-        dots = (dots + 1) % 4;  // Cycle through 0-3 dots
-        lastUpdate = millis();
+        Serial.print("⨂");
     }
 }
 
