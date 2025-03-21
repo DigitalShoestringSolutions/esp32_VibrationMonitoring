@@ -141,6 +141,22 @@ void checkSensors() {
     }
 }
 
+void showBufferStatus() {
+    static uint8_t dots = 0;
+    static unsigned long lastUpdate = 0;
+    
+    if (millis() - lastUpdate > 500) {  // Update every 500ms
+        Serial.print("\rBuffer Full");
+        for(uint8_t i = 0; i < dots; i++) {
+            Serial.print(".");
+        }
+        Serial.print("    ");  // Clear any previous dots
+        
+        dots = (dots + 1) % 4;  // Cycle through 0-3 dots
+        lastUpdate = millis();
+    }
+}
+
 void Task1code(void * pvParameters){
   sensors_event_t event;
   buff_start = millis();
@@ -165,12 +181,12 @@ void Task1code(void * pvParameters){
       if(sampleCounter >= samples){
         sampleCounter = 0;
         bufferFull = true;
-        Serial.print("Buffer Filled in ");
-        int buff_time = millis()-buff_start;
-        Serial.println(buff_time);
+        // Serial.print("Buffer Filled in ");
+        // int buff_time = millis()-buff_start;
+        // Serial.println(buff_time);
       }
     }else{
-      Serial.println("Buffer Full");
+      showBufferStatus();
     }
     while (micros() - period_start < sampling_period_us ){
     }
@@ -214,24 +230,23 @@ void setup() {
     if (!sensor_status.accel_ok) {
       oled_display.fillScreen(ST77XX_BLACK);
       oled_display.setCursor(0, 30);
-      oled_display.print("Retrying accel...");
+      oled_display.print("Connecting to accel...");
       delay(1000);
       sensor_status.accel_ok = initializeAccelerometer();
     }
     if (!sensor_status.temp_ok) {
       oled_display.fillScreen(ST77XX_BLACK); 
       oled_display.setCursor(0, 30);
-      oled_display.print("Retrying temp...");
+      oled_display.print("Connecting to temp...");
       delay(1000);
       sensor_status.temp_ok = initializeTemperatureSensor();
     }
+    oled_display.print("Sensors Connected!");
+    Serial.println("SensorsConnected!");
     delay(2000);
   }
-  // sensor_status.accel_ok = initializeAccelerometer();
-  // delay(1000);
-  // sensor_status.temp_ok = initializeTemperatureSensor();
-  // delay(1000);
-  // Create tasks only if accelerometer is working
+
+  // Create tasks only if sensors are working
   if (sensor_status.accel_ok) {
     xTaskCreatePinnedToCore(
       Task1code, /* Task function. */
@@ -260,8 +275,6 @@ void loop() {
 }
 
 bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
-  // Run periodic sensor check
-  checkSensors();
 
   if(bufferFull && sensor_status.accel_ok){
     /// Do analysis here
@@ -271,19 +284,19 @@ bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
 
     bufferFull = false;
     buff_start = millis();
-    Serial.println("Buffer Emptied");
+    // Serial.println("Buffer Emptied");
 
     int start = millis();
     removeOffset(vReal);
     int static_offset_time = millis()-start;
-    Serial.print("removing offset took: ");
-    Serial.println(static_offset_time);
+    // Serial.print("removing offset took: ");
+    // Serial.println(static_offset_time);
 
     start = millis();
     JSONdoc["acceleration"] = calculateRMS(vReal);
     int RMS_time = millis()-start;
-    Serial.print("RMS took: ");
-    Serial.println(RMS_time);
+    // Serial.print("RMS took: ");
+    // Serial.println(RMS_time);
 
     start = millis();
     FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
@@ -294,8 +307,8 @@ bool loop_callback(StaticJsonDocument<3000>& JSONdoc) {
     JSONdoc["peakFrequency"] = x;
     downSample(vReal, samples, JSONdoc);
     int fft_time = millis()-start;
-    Serial.print("FFT took: ");
-    Serial.println(fft_time);
+    // Serial.print("FFT took: ");
+    // Serial.println(fft_time);
 
     // Add temperature if sensor is working
     if(sensor_status.temp_ok) {

@@ -72,7 +72,7 @@ void ShoestringLib::reconnect() {
   if (now - mqttConnectTimestamp > 15000) {
     Serial.println("Investigating MQTT status...");
     display.setMQTTStatus("Connecting...");
-    Serial.println("Connecting... displayed, investigating further...");
+    Serial.println("Connecting...");
     const String status_topic = "status/"+cm.getString("identifier")+"/alive";
     Serial.print("Status topic: ");
     Serial.println(status_topic);
@@ -106,7 +106,7 @@ void ShoestringLib::loop() {
     reconnect();
     delay(29);
   } else {
-    Serial.println("client.connected(), not reconnecting");
+    // Serial.println("client.connected(), not reconnecting");
     client.loop();
 
     StaticJsonDocument<3000> JSONdoc;
@@ -135,9 +135,9 @@ void ShoestringLib::loop() {
       String topic = cm.getString("mqtt_topic") + "/" + cm.getString("identifier");
       client.publish(topic.c_str(), JSONmessageBuffer);
 
-      int total_2 = millis()-start_2;
-      Serial.print("Send MQTT took: ");
-      Serial.println(total_2);
+      // int total_2 = millis()-start_2;
+      // Serial.print("Send MQTT took: ");
+      // Serial.println(total_2);
     }
   }
   // yield();
