@@ -161,8 +161,7 @@ void Task1code(void * pvParameters){
   sensors_event_t event;
   buff_start = millis();
   sampling_period_us = round(1000000*(1.0/samplingFrequency));
-  Serial.print("Sampling period (us): ");
-  Serial.println(sampling_period_us);
+
 
   int period_start = micros();
   for(;;){

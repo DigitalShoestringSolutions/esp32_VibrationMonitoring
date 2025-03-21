@@ -57,6 +57,7 @@ private:
   long mqttConnectTimestamp = 0;
 
   void reconnect();
+  void showSystemStatus(); 
 };
 
 
