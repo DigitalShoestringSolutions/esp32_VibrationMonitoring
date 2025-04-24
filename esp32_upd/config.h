@@ -2,12 +2,12 @@
 #define CONFIG_H
 
 // WiFi Configuration
-const char* WIFI_SSID = "VM7772780";
-const char* WIFI_PASSWORD = "nph3ytywFbtx";
+const char* WIFI_SSID = "Scottspot";//"VM7772780";
+const char* WIFI_PASSWORD = "32qqaDgrBnR9TM";//"nph3ytywFbtx";
 
 // UDP Server Configuration
 const char* SERVER_IP = "192.168.0.101";  // Replace with your server's IP
-const int SERVER_PORT = 50000;            // Replace with your desired port
+const int SERVER_PORT = 8094;            // Replace with your desired port
 
 // Sensor Configuration
 const int SAMPLE_RATE = 400;  // Hz
