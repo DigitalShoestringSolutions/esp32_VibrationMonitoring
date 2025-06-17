@@ -129,7 +129,7 @@ void ShoestringLib::loop() {
       String topic = cm.getString("mqtt_topic") + "/" + cm.getString("identifier");
       client.publish(topic.c_str(), JSONmessageBuffer);
 
-      showSystemStatus();
+      Serial.println("Data sent")
     }
   }
   // yield();
@@ -172,10 +172,4 @@ void ShoestringLib::get_timestamp() {
 //     Serial.println(timestamp_buffer);
 // }
 
-void ShoestringLib::showSystemStatus() {
-    static const char* const indicators[] = {"●", "○"};
-    static uint8_t beat = 0;
-    Serial.print(indicators[beat]);  
-    beat = !beat;
-}
 

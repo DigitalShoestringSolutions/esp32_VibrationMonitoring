@@ -142,11 +142,9 @@ void checkSensors() {
 }
 
 void showBufferStatus() {
-    static uint8_t dots = 0;
-    static unsigned long lastUpdate = 0;
     
-    if (millis() - lastUpdate > 500) {  // Update every 500ms
-        Serial.print("⨂");
+    if (millis() > 500) {  // Update every 500ms? Will always be true except just after booting or for a moment every month or 2.
+        Serial.print("Buffer Full!");
     }
 }
 
