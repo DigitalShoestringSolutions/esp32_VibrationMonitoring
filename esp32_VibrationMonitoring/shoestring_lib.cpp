@@ -82,7 +82,7 @@ void ShoestringLib::reconnect() {
       display.setMQTTStatus("Failed");
     }
     mqttConnectTimestamp = now;
-  } 
+  }
   // else {
   //     Serial.println("Not yet time to reconnect:");
   //     Serial.print("now millis is ");
@@ -129,7 +129,7 @@ void ShoestringLib::loop() {
       String topic = cm.getString("mqtt_topic") + "/" + cm.getString("identifier");
       client.publish(topic.c_str(), JSONmessageBuffer);
 
-      Serial.println("Data sent")
+      Serial.println("Data sent");
     }
   }
   // yield();
@@ -171,5 +171,3 @@ void ShoestringLib::get_timestamp() {
 //     Serial.print("ts buffer :");
 //     Serial.println(timestamp_buffer);
 // }
-
-
