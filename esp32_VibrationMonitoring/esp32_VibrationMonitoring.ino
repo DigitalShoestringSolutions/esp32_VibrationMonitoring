@@ -115,7 +115,8 @@ bool initializeTemperatureSensor() {
 }
 
 // Periodic sensor check
-void checkSensors() {
+void checkSensors() { // Where is this called? doesn't ever seem to be.
+    Serial.println("Checking sensors");
     unsigned long now = millis();
     if (now - sensor_status.last_retry >= sensor_status.RETRY_INTERVAL) {
         sensor_status.last_retry = now;
@@ -141,17 +142,13 @@ void checkSensors() {
     }
 }
 
-void showBufferStatus() {
-    
-    if (millis() > 500) {  // Update every 500ms? Will always be true except just after booting or for a moment every month or 2.
-        Serial.print("Buffer Full!");
-    }
-}
 
 void Task1code(void * pvParameters){
   sensors_event_t event;
   buff_start = millis();
-  sampling_period_us = round(1000000*(1.0/samplingFrequency));
+  sampling_period_us = round(1000000*(1.0/samplingFrequency));  // freq typ 300 -> 3,333 us
+  Serial.print("sampling_period_us set as ");
+  Serial.println(sampling_period_us);
 
 
   int period_start = micros();
@@ -176,11 +173,14 @@ void Task1code(void * pvParameters){
         // Serial.println(buff_time);
       }
     }else{
-      showBufferStatus();
+      if (millis() > 500) {  // Update every 500ms? Will always be true except just after booting or for a moment every month or 2.
+        Serial.print("Buffer Full! ");
     }
-    while (micros() - period_start < sampling_period_us ){
     }
-    period_start += sampling_period_us;
+    while (micros() - period_start < sampling_period_us ){ // What about overflows? micros() overflows every ~70 minutes, 32bit unsigned. 
+      // Wait until it has been at least sampling_period_us since period_start
+    }
+    period_start += sampling_period_us; // period_start is created only with int period_start = micros(); above. Will it also overflow in the same way?
   }
 }
 
@@ -374,7 +374,7 @@ void downSample(float *vData, uint16_t bufferSize, StaticJsonDocument<3000>& JSO
   }
 }
 
-void PrintVector(float *vData, uint16_t bufferSize, uint8_t scaleType)
+void PrintVector(float *vData, uint16_t bufferSize, uint8_t scaleType) // where is this used?
 {
   for (uint16_t i = 0; i < bufferSize; i++)
   {
@@ -407,8 +407,3 @@ char get_timestamp() {
     unsigned long long int milliseconds = (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000);
     return milliseconds;
 }
-
-
-
-
-
