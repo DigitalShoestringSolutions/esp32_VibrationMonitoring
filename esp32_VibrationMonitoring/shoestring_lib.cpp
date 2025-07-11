@@ -68,6 +68,7 @@ void ShoestringLib::reconnect() {
 
   if (now - mqttConnectTimestamp > 15000) {
     display.setMQTTStatus("Connecting...");
+    Serial.println("Connecting...");
     const String status_topic = "status/"+cm.getString("identifier")+"/alive";
     if (client.connect(cm.getString("identifier").c_str(),status_topic.c_str(),1,true,"{\"connected\":false}")) {  //todo randomise
       Serial.println("ONLINE");
@@ -82,6 +83,14 @@ void ShoestringLib::reconnect() {
     }
     mqttConnectTimestamp = now;
   }
+  // else {
+  //     Serial.println("Not yet time to reconnect:");
+  //     Serial.print("now millis is ");
+  //     Serial.println(now);
+  //     Serial.print("waiting until ");
+  //     Serial.print(mqttConnectTimestamp);
+  //     Serial.println(" to reconnect");
+  // }
 }
 
 void ShoestringLib::loop() {
@@ -91,6 +100,7 @@ void ShoestringLib::loop() {
     reconnect();
     delay(29);
   } else {
+    // Serial.println("client.connected(), not reconnecting");
     client.loop();
 
     StaticJsonDocument<3000> JSONdoc;
@@ -119,9 +129,7 @@ void ShoestringLib::loop() {
       String topic = cm.getString("mqtt_topic") + "/" + cm.getString("identifier");
       client.publish(topic.c_str(), JSONmessageBuffer);
 
-      int total_2 = millis()-start_2;
-      Serial.print("Send MQTT took: ");
-      Serial.println(total_2);
+      Serial.println("Data sent");
     }
   }
   // yield();
@@ -163,4 +171,3 @@ void ShoestringLib::get_timestamp() {
 //     Serial.print("ts buffer :");
 //     Serial.println(timestamp_buffer);
 // }
-
